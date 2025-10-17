@@ -6,13 +6,30 @@ import '../App.css';
 
 export default function SalesReport() {
   const [sales, setSales] = useState([]);
+  const [error, setError] = useState('');
   const { logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
   useEffect(() => {
-    api.get('/api/sales')
-      .then(res => setSales(res.data.sales))
-      .catch(() => alert('Access denied'));
+    // ✅ Make sure we include credentials (cookies)
+    api.get('/api/sales', { withCredentials: true })
+      .then(res => {
+        if (res.data.sales) {
+          setSales(res.data.sales);
+        } else {
+          setError('No sales data found.');
+        }
+      })
+      .catch(err => {
+        console.error('Sales fetch error:', err);
+        if (err.response?.status === 401) {
+          setError('❌ Unauthorized: Please log in again.');
+        } else if (err.response?.status === 403) {
+          setError('⚠️ Forbidden: Admin access only.');
+        } else {
+          setError('Something went wrong while loading sales data.');
+        }
+      });
   }, []);
 
   const handleLogout = async () => {
@@ -24,11 +41,15 @@ export default function SalesReport() {
     <div className="container">
       <h2>Sales Report (Admin Only)</h2>
 
-      <ul style={{ textAlign: 'left' }}>
-        {sales.map(s => (
-          <li key={s.id}>{s.product} — ${s.amount}</li>
-        ))}
-      </ul>
+      {error && <p className="alert">{error}</p>}
+
+      {!error && (
+        <ul style={{ textAlign: 'left' }}>
+          {sales.map((s) => (
+            <li key={s.id}>{s.product} — ${s.amount}</li>
+          ))}
+        </ul>
+      )}
 
       <div className="button-group">
         <button className="btn-secondary" onClick={() => navigate('/')}>
